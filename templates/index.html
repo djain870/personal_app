@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Personal App{% endblock %}
+
+{% block content %}
+    <h1 style="font-size: 2.5rem; margin-bottom: 40px;">Welcome, {{ request.cookies.get('user') }}</h1>
+
+    <div class="dashboard-grid">
+        <a href="/finances" class="card">
+            <h2>💰 Finance</h2>
+            <p>Monitor transactions and visualize your monthly spending habits.</p>
+            <p><strong>Click to open →</strong></p>
+        </a>
+
+        <a href="/documents" class="card">
+            <h2>📁 Documents</h2>
+            <p>Securely store and organize your important files and records.</p>
+            <p><strong>Click to open →</strong></p>
+        </a>
+
+        <a href="/news" class="card">
+            <h2>📰 News</h2>
+            <p>Browse a curated feed of topics that matter most to you.</p>
+            <p><strong>Click to open →</strong></p>
+        </a>
+
+        <a href="/chat" class="card">
+            <h2>🤖 Assistant</h2>
+            <p>Your LLM-powered companion for tasks and quick answers.</p>
+            <p><strong>Click to open →</strong></p>
+        </a>
+    </div>
+{% endblock %}

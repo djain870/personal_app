@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - Personal App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-hover: rgba(255, 255, 255, 0.2);
+            --accent: #6366f1;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            color: white;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+        }
+
+        nav {
+            padding: 1rem 5%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            transition: 0.2s;
+            padding-bottom: 4px;
+        }
+
+        .container {
+            flex: 1;
+            max-width: 800px;
+            width: 95%;
+            margin: 30px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+
+        /* --- Chat Interface --- */
+        .chat-window {
+            flex: 1;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .messages {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 65vh;
+        }
+
+        /* Message Bubbles */
+        .msg {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .user {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot {
+            align-self: flex-start;
+            background: var(--bot-bubble);
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* --- Input Area --- */
+        .input-area {
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input::placeholder { color: rgba(255,255,255,0.5); }
+
+        .send-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .send-btn:hover { background: #4f46e5; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div>
+            <a href="/" class="nav-link" style="font-weight:600;">Personal.ai</a>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <a href="/" style="color:white; text-decoration:none;">Home</a>
+            <a href="/finances" style="color:white; text-decoration:none;">Finances</a>
+            <a href="/documents" style="color:white; text-decoration:none;">Documents</a>
+            <a href="/news" style="color:white; text-decoration:none;">News</a>
+            <a href="/chat" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Assistant</a>
+            <span style="font-size:0.9rem;">👤 {{ request.cookies.get('user') }}</span>
+            <a href="/logout" style="color:#f87171; text-decoration:none;">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="chat-window">
+            <div class="messages" id="chatBox">
+                </div>
+
+            <div class="input-area">
+                <input type="text" id="userInput" placeholder="Ask me anything...">
+                <button onclick="sendMessage()" class="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById("userInput");
+        const box = document.getElementById("chatBox");
+
+        // Helper to add a bubble
+        function addBubble(text, sender) {
+            const side = sender === "user" ? "user" : "bot";
+            box.innerHTML += `<div class="msg ${side}">${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // Send logic
+        async function sendMessage() {
+            const message = input.value;
+            if (!message) return;
+
+            addBubble(message, "user");
+            input.value = "";
+
+            try {
+                const res = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message })
+                });
+                const data = await res.json();
+                addBubble(data.reply, "bot");
+            } catch (err) {
+                addBubble("⚠️ Error: Could not reach the brain.", "bot");
+            }
+        }
+
+        // Enter key support
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        // Load History on Start
+        window.onload = async () => {
+            try {
+                const res = await fetch("/chat-history");
+                const data = await res.json();
+                data.forEach(chat => {
+                    addBubble(chat.user_message, "user");
+                    addBubble(chat.bot_reply, "bot");
+                });
+            } catch (err) {
+                console.log("No history found.");
+            }
+        };
+
+        // Clear Chat
+        function clearChat() {
+            if(confirm("Are you sure you want to wipe the conversation?")) {
+                fetch("/clear-chat").then(() => location.reload());
+            }
+        }
+    </script>
+</body>
+</html>

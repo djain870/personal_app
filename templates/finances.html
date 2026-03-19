@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker - Personal App</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-hover: rgba(255, 255, 255, 0.2);
+            --accent: #6366f1;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            color: white;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+        }
+
+        nav {
+            padding: 1rem 5%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+
+        /* --- Grid Layout for Stats --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 25px;
+        }
+
+        .total-box h2 {
+            font-size: 2.5rem;
+            margin: 10px 0;
+            color: #fff;
+        }
+
+        /* --- Form Styles --- */
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        input, select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+        }
+
+        button[type="submit"] {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* --- Table Styles --- */
+        .table-container {
+            overflow-x: auto;
+            background: var(--glass);
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .btn-delete { color: var(--danger); text-decoration: none; font-weight: 600; margin-right: 10px;}
+        .btn-edit { color: #60a5fa; text-decoration: none; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div>
+            <a href="/" style="color:white; text-decoration:none; font-weight:600;">Personal.ai</a>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <a href="/" style="color:white; text-decoration:none">Home</a>
+            <a href="/finances" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Finances</a>
+            <a href="/documents" style="color:white; text-decoration:none;">Documents</a>
+            <a href="/news" style="color:white; text-decoration:none;">News</a>
+            <a href="/chat" style="color:white; text-decoration:none;">Assistant</a>
+            <span style="font-size:0.9rem;">👤 {{ request.cookies.get('user') }}</span>
+            <a href="/logout" style="color:#f87171; text-decoration:none;">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="card total-box">
+                <p style="opacity: 0.7; margin: 0;">Total Spending</p>
+                <h2>₹{{ total }}</h2>
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+                <ul style="list-style: none; padding: 0;">
+                    {% for cat, amt in category_totals.items() %}
+                    <li style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>{{ cat }}</span>
+                        <strong>₹{{ amt }}</strong>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <canvas id="categoryChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 15px;">Add New Transaction</h3>
+        <form action="/finances/add" method="post" class="input-group">
+            <input type="number" step="0.01" name="amount" placeholder="Amount" required style="width: 120px;">
+            <input type="text" name="category" placeholder="Category (e.g. Food)" required>
+            <input type="text" name="note" placeholder="Note">
+            <input type="date" name="date" required>
+            <button type="submit">Add Expense</button>
+        </form>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3>All Expenses</h3>
+            <form method="get" action="/finances" style="display: flex; gap: 10px;">
+                <input type="month" name="month" value="{{ request.query_params.get('month', '') }}">
+                <button type="submit" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px 15px; border-radius: 8px; cursor: pointer;">Filter</button>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Note</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in expenses %}
+                    <tr>
+                        <td style="font-weight: 600;">₹{{ e.amount }}</td>
+                        <td><span style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; font-size: 0.85rem;">{{ e.category }}</span></td>
+                        <td style="opacity: 0.8;">{{ e.note }}</td>
+                        <td>{{ e.date }}</td>
+                        <td>
+                            <a href="/finances/edit/{{ e.id }}" class="btn-edit">Edit</a>
+                            <a href="/finances/delete/{{ e.id }}" class="btn-delete">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const categoryTotals = JSON.parse('{{ category_totals | tojson | safe }}');
+        
+        // Custom colors for Chart.js to match the modern theme
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'doughnut', // Changed to doughnut for a more modern look
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    data: Object.values(categoryTotals),
+                    backgroundColor: colors,
+                    borderColor: 'transparent',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: 'white', font: { family: 'Inter' } }
+                    }
+                }
+            }
+        });
+    });
+    </script>
+
+</body>
+</html>

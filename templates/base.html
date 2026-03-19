@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Personal App{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-hover: rgba(255, 255, 255, 0.2);
+            --accent: #6366f1;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            color: white;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+        }
+
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 5%; background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: 0.3s;
+        }
+        .nav-links a:hover { opacity: 1; }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #f87171 !important;
+            padding: 6px 15px; border-radius: 8px; font-weight: 600;
+        }
+
+        .container { max-width: 1100px; margin: 50px auto; padding: 0 20px; text-align: center; }
+
+        /* --- Reusable Card Styles --- */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; }
+        .card {
+            background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px; padding: 30px; transition: all 0.3s ease; text-decoration: none; color: white; display: block;
+        }
+        .card:hover { transform: translateY(-10px); background: var(--glass-hover); border-color: rgba(255, 255, 255, 0.3); }
+        .card h2 { margin-top: 0; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .card p { opacity: 0.7; font-size: 0.95rem; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    {% if request.url.path not in ['/login', '/signup'] %}
+    <nav>
+        <div class="logo"><a href="/" style="color:white; text-decoration:none; font-weight:600;">Personal.ai</a></div>   
+        {% block navbar %}
+        <div class="nav-links">
+            {% if request.url.path == '/' %}
+            <a href="/" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Home</a>
+            {% else %}
+            <a href="/" style="color:white; text-decoration:none;">Home</a>
+            {% endif %}
+
+            {% if request.url.path.startswith('/finances') %}
+            <a href="/finances" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Finances</a>
+            {% else %}
+            <a href="/finances" style="color:white; text-decoration:none;">Finances</a>
+            {% endif %}
+
+            {% if request.url.path.startswith('/documents') %}
+            <a href="/documents" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Documents</a>
+            {% else %}
+            <a href="/documents" style="color:white; text-decoration:none;">Documents</a>
+            {% endif %}
+
+            {% if request.url.path.startswith('/news') %}
+            <a href="/news" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">News</a>
+            {% else %}
+            <a href="/news" style="color:white; text-decoration:none;">News</a>
+            {% endif %}
+
+            {% if request.url.path.startswith('/chat') %}
+            <a href="/chat" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Assistant</a>
+            {% else %}
+            <a href="/chat" style="color:white; text-decoration:none;">Assistant</a>
+            {% endif %}
+
+            <span style="font-size:0.9rem;">👤 {{ request.cookies.get('user') }}</span>
+            <a href="/logout" style="color:#f87171; text-decoration:none;">Logout</a>
+        </div>
+        {% endblock %}
+    </nav>
+    {% endif %}
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

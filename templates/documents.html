@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents - Personal App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-hover: rgba(255, 255, 255, 0.2);
+            --accent: #6366f1;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            color: white;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+        }
+
+        nav {
+            padding: 1rem 5%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            transition: 0.2s;
+            padding-bottom: 4px;
+        }
+        .nav-link.active {
+            font-weight: 600;
+            border-bottom: 2px solid white;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+
+        h1 { font-size: 2.2rem; margin-bottom: 30px; }
+
+        /* --- Modern Upload Area --- */
+        .upload-section {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            transition: 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        button[type="submit"] {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button[type="submit"]:hover { background: #4f46e5; transform: scale(1.05); }
+
+        /* --- Document Table --- */
+        .table-container {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            text-align: left;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.95rem;
+        }
+
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .action-link {
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-right: 15px;
+            transition: 0.3s;
+        }
+
+        .view-link { color: #60a5fa; }
+        .delete-link { color: var(--danger); }
+    </style>
+
+    <nav>
+        <div>
+            <a href="/" class="nav-link" style="font-weight:600;">Personal.ai</a>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Home</a>
+
+            <a href="/finances" class="nav-link {% if request.url.path.startswith('/finances') %}active{% endif %}">Finances</a>
+
+            <a href="/documents" class="nav-link {% if request.url.path.startswith('/documents') %}active{% endif %}">Documents</a>
+
+            <a href="/news" class="nav-link {% if request.url.path.startswith('/news') %}active{% endif %}">News</a>
+
+            <a href="/chat" class="nav-link {% if request.url.path.startswith('/chat') %}active{% endif %}">Assistant</a>
+
+            <span style="font-size:0.9rem;">👤 {{ request.cookies.get('user') }}</span>
+            <a href="/logout" style="color:#f87171; text-decoration:none;">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📁 Stored Documents</h1>
+
+        <div class="upload-section">
+            <h3 style="margin-top: 0;">Upload New File</h3>
+            <p style="opacity: 0.7; font-size: 0.9rem; margin-bottom: 20px;">PDF, Images, or Documents supported</p>
+            <form action="/documents/upload" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" required><br>
+                <button type="submit">Upload Document</button>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Uploaded Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in docs %}
+                    <tr>
+                        <td class="file-name">
+                            <span>📄</span> {{ d.name }}
+                        </td>
+                        <td style="opacity: 0.7;">{{ d.uploaded_date }}</td>
+                        <td>
+                            <a href="/data/documents/{{ d.name }}" target="_blank" class="action-link view-link">View</a>
+                            <a href="/documents/delete/{{ d.id }}" class="action-link delete-link">Delete</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="no-docs">No documents found. Start by uploading one above!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

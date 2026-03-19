@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Expense{% endblock %}
+
+{% block content %}
+<div style="max-width:400px; margin:50px auto; background:rgba(255,255,255,0.1); padding:30px; border-radius:12px; backdrop-filter:blur(10px); text-align:center;">
+
+    <h2 style="margin-bottom:20px;">✏️ Edit Transaction</h2>
+
+    <form action="/finances/update/{{ expense.id }}" method="post">
+        <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required
+               placeholder="Amount (₹)"
+               style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:none;">
+
+        <input type="text" name="category" value="{{ expense.category }}" required
+               placeholder="Category"
+               style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:none;">
+
+        <input type="text" name="note" value="{{ expense.note }}"
+               placeholder="Note"
+               style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:none;">
+
+        <input type="date" name="date" value="{{ expense.date }}" required
+               style="width:100%; padding:10px; margin-bottom:20px; border-radius:8px; border:none;">
+
+        <button type="submit"
+                style="width:100%; padding:10px; border:none; border-radius:8px; background:#4CAF50; color:white; font-weight:600; cursor:pointer;">
+            Save Changes
+        </button>
+    </form>
+
+    <p style="margin-top:15px;">
+        <a href="/finances" style="color:#4CAF50; text-decoration:none;">Cancel</a>
+    </p>
+
+</div>
+{% endblock %}
