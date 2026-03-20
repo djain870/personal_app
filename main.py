@@ -191,9 +191,9 @@ def news(request: Request):
 
     response = requests.get(url)
     data = response.json()
-    print(data)
+    
     articles = data.get("articles", [])[:10]
-
+    
     return templates.TemplateResponse(
         "news.html",
         {"request": request, "articles": articles}
