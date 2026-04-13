@@ -2,12 +2,17 @@
 from unittest import result
 from fastapi import FastAPI, Request, Form, Body, UploadFile, File
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 from models import Expense, Document, Chat, User
 from database import engine, Base
 from collections import defaultdict
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
+load_dotenv()
+
+from agents import expense_agent, rag_agent, router
 
 # for file uploads (Document management)
 
@@ -21,17 +26,40 @@ Base.metadata.create_all(bind=engine)
 
 app.mount("/data", StaticFiles(directory="data"), name="data")
 
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    public_paths = ["/login", "/signup", "/create-user", "/static", "/data", "/docs", "/openapi.json"]
+
+    if any(request.url.path.startswith(path) for path in public_paths):
+        return await call_next(request)
+
+    user = get_current_user(request)
+
+    if not user or user == "None":
+        # API routes → return JSON
+        if request.url.path.startswith("/chat") or request.url.path.startswith("/api"):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        # UI routes → redirect
+        return RedirectResponse(url="/login")
+
+    return await call_next(request)
+
 def get_current_user(request: Request):
-    return request.cookies.get("user")
+    user = request.cookies.get("user")
+    if not user or user == "None":
+        return None
+    return user
 
 
 #home route
 @app.get("/")
 def home(request: Request):
-    # user = get_current_user(request)
+    user = get_current_user(request)
 
-    # if not user:
-    #     return RedirectResponse(url="/login")
+    if not user:
+        return RedirectResponse(url="/login")
 
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -41,7 +69,9 @@ def home(request: Request):
 @app.get("/finances")
 def finance(request: Request, month: str = None):
     db = SessionLocal()
-    user = request.cookies.get("user")
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
     if month:
         expenses = db.query(Expense).filter(Expense.date.startswith(month), Expense.user == user).all()
     else:
@@ -67,7 +97,7 @@ def add_expense(
     date: str = Form(...)
 ):
     db = SessionLocal()
-    user = request.cookies.get("user")
+    user = get_current_user(request)
     expense = Expense(
         amount=amount,
         category=category,
@@ -85,7 +115,10 @@ def add_expense(
 @app.get("/finances/delete/{id}")
 def delete_expense(id: int):
     db = SessionLocal()
-    expense = db.query(Expense).get(id)
+    expense = db.query(Expense).filter(
+    Expense.id == id,
+    Expense.user == user
+).first()
     db.delete(expense)
     db.commit()
     db.close()
@@ -95,7 +128,10 @@ def delete_expense(id: int):
 @app.get("/finances/edit/{id}")
 def edit_page(request: Request, id: int):
     db = SessionLocal()
-    expense = db.query(Expense).get(id)
+    expense = db.query(Expense).filter(
+    Expense.id == id,
+    Expense.user == user
+).first()
     db.close()
 
     return templates.TemplateResponse(
@@ -113,7 +149,10 @@ def update_expense(
     date: str = Form(...)
 ):
     db = SessionLocal()
-    expense = db.query(Expense).get(id)
+    expense = db.query(Expense).filter(
+    Expense.id == id,
+    Expense.user == user
+).first()
 
     expense.amount = amount
     expense.category = category
@@ -140,6 +179,7 @@ def documents(request: Request):
     )
 
 
+from rag import process_document, query_rag
 
 @app.post("/documents/upload")
 def upload_document(file: UploadFile = File(...)):
@@ -147,6 +187,9 @@ def upload_document(file: UploadFile = File(...)):
 
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    # Process document for RAG
+    process_document(file_location)
 
     db = SessionLocal()
     doc = Document(
@@ -186,8 +229,9 @@ import requests
 def news(request: Request):
     api_key = os.environ.get("NEWS_TOKEN")
     # "58eea8fde7024a45ba0952d99b0164ee"
-
-    url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={api_key}"
+    # Compute yesterday's date dynamically (YYYY-MM-DD)
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    url = f"https://newsapi.org/v2/everything?q=India&from={yesterday}&sortBy=popularity&apiKey={api_key}"
 
     response = requests.get(url)
     data = response.json()
@@ -202,43 +246,55 @@ def news(request: Request):
 from openai import OpenAI
 import os
 
+
 client = OpenAI(
     base_url="https://router.huggingface.co/v1",
     api_key = os.environ.get("HF_TOKEN"),
 )
+
+
+
 
 @app.post("/chat")
 def chat_api(request: Request, data: dict = Body(...)):
     message = data.get("message", "")
 
     db = SessionLocal()
-    user = request.cookies.get("user")
+    user = get_current_user(request)
     print(user)
     expenses = db.query(Expense).filter(Expense.user == user).all()
     db.close()
 
-    # simple fallback (important)
-    if "total" in message.lower():
-        total = sum(e.amount for e in expenses)
-        return {"reply": f"Your total spending is ₹{total}"}
+    # # simple fallback (important)
+    # if "total" in message.lower():
+    #     total = sum(e.amount for e in expenses)
+    #     return {"reply": f"Your total spending is ₹{total}"}
 
-    # prepare context
-    expense_text = "\n".join(
-        [f"{e.category} - ₹{e.amount} on {e.date}" for e in expenses]
-    )
+    # # prepare context
+    # expense_text = "\n".join(
+    #     [f"{e.category} - ₹{e.amount} on {e.date}" for e in expenses]
+    # )
+    # RAG retrieval
+    context = query_rag(message)
+    # Step 1: Route the query
+    decision = router.route(client, message)
 
-    prompt = f"""
-You are a personal finance assistant.
+    print("Routing decision:", decision)  # debug
 
-User data:
-{expense_text}
+    # Step 2: Call correct agent
+    if "expense" in decision:
+        prompt = expense_agent.run(user, message)
+    elif "document" in decision:
+        prompt = rag_agent.run(message)
+    else:
+        # general fallback (no RAG, no DB)
+        prompt = f"""
+You are a helpful assistant.
+Answer the question normally:
 
-User question:
+Question:
 {message}
-
-Answer clearly.
 """
-
     try:
         completion = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3-8B-Instruct",   # ✅ IMPORTANT CHANGE
@@ -251,7 +307,7 @@ Answer clearly.
 
         reply = completion.choices[0].message.content
 
-        user = request.cookies.get("user")
+        user = get_current_user(request)
 
         chat = Chat(
             user_message=message,
@@ -278,7 +334,7 @@ def chat_page(request: Request):
 
 @app.get("/chat-history")
 def get_chat_history(request: Request):
-    user = request.cookies.get("user")
+    user = get_current_user(request)
 
     db = SessionLocal()
     chats = db.query(Chat).filter(Chat.user == user).order_by(Chat.id).all()
@@ -287,11 +343,14 @@ def get_chat_history(request: Request):
     return chats
 
 @app.get("/clear-chat")
-def clear_chat():
+def clear_chat(request: Request):
+    user = get_current_user(request)
+
     db = SessionLocal()
-    db.query(Chat).delete()
+    db.query(Chat).filter(Chat.user == user).delete()
     db.commit()
     db.close()
+
     return {"message": "Cleared"}
 
 @app.get("/login")
@@ -305,12 +364,15 @@ def login(username: str = Form(...), password: str = Form(...)):
     user = db.query(User).filter(User.username == username).first()
     db.close()
 
-    if user and user.password == password:
-        response = RedirectResponse(url="/", status_code=303)
-        response.set_cookie(key="user", value=username)
-        return response
+    if user is None:
+        return {"message": "User does not exist"}
 
-    return {"message": "Invalid credentials"}
+    if user.password != password:
+        return {"message": "Incorrect password"}
+
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="user", value=user.username)
+    return response
 
 
 @app.get("/logout")
@@ -353,3 +415,8 @@ def signup(username: str = Form(...), password: str = Form(...)):
     db.close()
 
     return RedirectResponse(url="/login", status_code=303)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", reload=True)
