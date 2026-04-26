@@ -5,11 +5,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
-from models import Expense, Document, Chat, User
+from models import Expense, Document, Chat, User, Investment
 from database import engine, Base
 from collections import defaultdict
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 load_dotenv()
 
 from agents import expense_agent, rag_agent, router
@@ -64,6 +64,7 @@ def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+from sqlalchemy import extract
 
 #finance management routes
 @app.get("/finances")
@@ -73,7 +74,16 @@ def finance(request: Request, month: str = None):
     if not user:
         return RedirectResponse(url="/login")
     if month:
-        expenses = db.query(Expense).filter(Expense.date.startswith(month), Expense.user == user).all()
+        try:
+            year, month_num = map(int, month.split("-"))
+        except:
+            return RedirectResponse("/finances")
+
+        expenses = db.query(Expense).filter(
+            extract("year", Expense.date) == year,
+            extract("month", Expense.date) == month_num,
+            Expense.user == user
+        ).all()
     else:
         expenses = db.query(Expense).filter(Expense.user == user).all()
     total = sum(e.amount for e in expenses)
@@ -98,12 +108,15 @@ def add_expense(
 ):
     db = SessionLocal()
     user = get_current_user(request)
+
+    parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+
     expense = Expense(
         amount=amount,
         category=category,
         note=note,
-        date=date,
-        user = user
+        date=parsed_date,
+        user=user
     )
 
     db.add(expense)
@@ -113,12 +126,16 @@ def add_expense(
     return RedirectResponse(url="/finances", status_code=303)
 
 @app.get("/finances/delete/{id}")
-def delete_expense(id: int):
+def delete_expense(request: Request,id: int):
     db = SessionLocal()
+    user = get_current_user(request)
     expense = db.query(Expense).filter(
     Expense.id == id,
     Expense.user == user
 ).first()
+    if not expense:
+        db.close()
+        return RedirectResponse("/finances")
     db.delete(expense)
     db.commit()
     db.close()
@@ -128,6 +145,7 @@ def delete_expense(id: int):
 @app.get("/finances/edit/{id}")
 def edit_page(request: Request, id: int):
     db = SessionLocal()
+    user = get_current_user(request)
     expense = db.query(Expense).filter(
     Expense.id == id,
     Expense.user == user
@@ -142,6 +160,7 @@ def edit_page(request: Request, id: int):
 
 @app.post("/finances/update/{id}")
 def update_expense(
+    request: Request,
     id: int,
     amount: float = Form(...),
     category: str = Form(...),
@@ -149,6 +168,7 @@ def update_expense(
     date: str = Form(...)
 ):
     db = SessionLocal()
+    user = get_current_user(request)
     expense = db.query(Expense).filter(
     Expense.id == id,
     Expense.user == user
@@ -157,7 +177,9 @@ def update_expense(
     expense.amount = amount
     expense.category = category
     expense.note = note
-    expense.date = date
+    parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+    expense.date = parsed_date
+
 
     db.commit()
     db.close()
@@ -170,7 +192,9 @@ def update_expense(
 @app.get("/documents")
 def documents(request: Request):
     db = SessionLocal()
-    docs = db.query(Document).all()
+
+    user = get_current_user(request)
+    docs = db.query(Document).filter(Document.user == user).all()
     db.close()
 
     return templates.TemplateResponse(
@@ -182,20 +206,25 @@ def documents(request: Request):
 from rag import process_document, query_rag
 
 @app.post("/documents/upload")
-def upload_document(file: UploadFile = File(...)):
+def upload_document(request: Request,file: UploadFile = File(...)):
     file_location = f"data/documents/{file.filename}"
 
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+    user = get_current_user(request)
 
-    # Process document for RAG
-    process_document(file_location)
+    # Process document safely for RAG
+    try:
+        process_document(file_location)
+    except Exception as e:
+        print("PDF processing failed:", str(e))
 
     db = SessionLocal()
     doc = Document(
         name=file.filename,
         file_path=file_location,
-        uploaded_date="today"
+        uploaded_date=datetime.now(timezone.utc).date(),
+        user=user
     )
     db.add(doc)
     db.commit()
@@ -206,9 +235,17 @@ def upload_document(file: UploadFile = File(...)):
 
 
 @app.get("/documents/delete/{id}")
-def delete_document(id: int):
+def delete_document(request: Request,id: int):
     db = SessionLocal()
-    doc = db.get(Document, id)
+    user = get_current_user(request)
+    doc = db.query(Document).filter(
+    Document.id == id,
+    Document.user == user
+    ).first()
+
+    if not doc:
+        db.close()
+        return RedirectResponse("/documents")
 
     # delete file from folder
     if os.path.exists(doc.file_path):
@@ -221,6 +258,50 @@ def delete_document(id: int):
     return RedirectResponse(url="/documents", status_code=303)
 
 
+@app.get("/investments")
+def investments_dashboard(request: Request):
+    db = SessionLocal()
+    user = get_current_user(request)
+
+    if not user:
+        return RedirectResponse("/login")
+
+    investments = db.query(Investment).filter(Investment.user == user).all()
+
+    from collections import defaultdict
+
+    # Net worth trend
+    monthly_networth = defaultdict(float)
+    for i in investments:
+        key = i.month.strftime("%Y-%m")
+        monthly_networth[key] += i.balance
+
+    # Type distribution
+    type_totals = defaultdict(float)
+    for i in investments:
+        type_totals[i.type] += i.balance
+
+    # Volatility split
+    volatility_totals = defaultdict(float)
+    for i in investments:
+        volatility_totals[i.volatility] += i.balance
+
+    # Top accounts
+    top_accounts = sorted(investments, key=lambda x: x.balance, reverse=True)[:5]
+
+    db.close()
+
+    return templates.TemplateResponse(
+        "investments.html",
+        {
+            "request": request,
+            "monthly_networth": dict(monthly_networth),
+            "type_totals": dict(type_totals),
+            "volatility_totals": dict(volatility_totals),
+            "top_accounts": top_accounts
+        }
+    )
+
 
 # news routes
 import requests
@@ -230,7 +311,7 @@ def news(request: Request):
     api_key = os.environ.get("NEWS_TOKEN")
     # "58eea8fde7024a45ba0952d99b0164ee"
     # Compute yesterday's date dynamically (YYYY-MM-DD)
-    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
     url = f"https://newsapi.org/v2/everything?q=India&from={yesterday}&sortBy=popularity&apiKey={api_key}"
 
     response = requests.get(url)
@@ -258,24 +339,8 @@ client = OpenAI(
 @app.post("/chat")
 def chat_api(request: Request, data: dict = Body(...)):
     message = data.get("message", "")
-
-    db = SessionLocal()
     user = get_current_user(request)
-    print(user)
-    expenses = db.query(Expense).filter(Expense.user == user).all()
-    db.close()
-
-    # # simple fallback (important)
-    # if "total" in message.lower():
-    #     total = sum(e.amount for e in expenses)
-    #     return {"reply": f"Your total spending is ₹{total}"}
-
-    # # prepare context
-    # expense_text = "\n".join(
-    #     [f"{e.category} - ₹{e.amount} on {e.date}" for e in expenses]
-    # )
     # RAG retrieval
-    context = query_rag(message)
     # Step 1: Route the query
     decision = router.route(client, message)
 
@@ -340,7 +405,10 @@ def get_chat_history(request: Request):
     chats = db.query(Chat).filter(Chat.user == user).order_by(Chat.id).all()
     db.close()
 
-    return chats
+    return [
+        {"user_message": c.user_message, "bot_reply": c.bot_reply}
+        for c in chats
+    ]
 
 @app.get("/clear-chat")
 def clear_chat(request: Request):

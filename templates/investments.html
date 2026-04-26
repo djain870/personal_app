@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Investments{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    <!-- Net Worth + Chart -->
+    <div class="grid">
+        <div class="card">
+            <p style="opacity:0.7;">Net Worth Snapshot</p>
+            <h2>₹{{ monthly_networth.values() | sum }}</h2>
+
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:20px 0;">
+
+            <h4>Top Accounts</h4>
+            <ul>
+                {% for acc in top_accounts %}
+                <li>
+                    <span>{{ acc.account }}</span>
+                    <strong>₹{{ acc.balance }}</strong>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card">
+            <canvas id="networthChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Allocation + Volatility -->
+    <div class="grid">
+        <div class="card">
+            <h3>Asset Allocation</h3>
+            <canvas id="typeChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Volatility Split</h3>
+            <canvas id="volatilityChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const networth = {{ monthly_networth | default({}) | tojson | safe }};
+const types = {{ type_totals | default({}) | tojson | safe }};
+const volatility = {{ volatility_totals | default({}) | tojson | safe }};
+
+// sort months properly
+const labels = Object.keys(networth).sort();
+const values = labels.map(k => networth[k]);
+
+const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+
+// 📈 Net Worth Trend
+new Chart(document.getElementById('networthChart'), {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Net Worth',
+            data: values,
+            borderColor: '#6366f1',
+            tension: 0.4
+        }]
+    },
+    options: {
+        plugins: { legend: { labels: { color: 'white' } } },
+        scales: {
+            x: { ticks: { color: 'white' } },
+            y: { ticks: { color: 'white' } }
+        }
+    }
+});
+
+// 🥧 Allocation
+new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(types),
+        datasets: [{
+            data: Object.values(types),
+            backgroundColor: colors
+        }]
+    },
+    options: {
+        plugins: { legend: { labels: { color: 'white' } } }
+    }
+});
+
+// ⚖️ Volatility
+new Chart(document.getElementById('volatilityChart'), {
+    type: 'pie',
+    data: {
+        labels: Object.keys(volatility),
+        datasets: [{
+            data: Object.values(volatility),
+            backgroundColor: colors
+        }]
+    },
+    options: {
+        plugins: { legend: { labels: { color: 'white' } } }
+    }
+});
+</script>
+
+{% endblock %}

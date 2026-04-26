@@ -74,10 +74,17 @@
             <a href="/" style="color:white; text-decoration:none;">Home</a>
             {% endif %}
 
+
             {% if request.url.path.startswith('/finances') %}
             <a href="/finances" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Finances</a>
             {% else %}
             <a href="/finances" style="color:white; text-decoration:none;">Finances</a>
+            {% endif %}
+
+            {% if request.url.path.startswith('/investments') %}
+            <a href="/investments" style="color:white; text-decoration:none; font-weight:600; border-bottom:2px solid white;">Investments</a>
+            {% else %}
+            <a href="/investments" style="color:white; text-decoration:none;">Investments</a>
             {% endif %}
 
             {% if request.url.path.startswith('/documents') %}
