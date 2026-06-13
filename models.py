@@ -49,3 +49,26 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True)
     password = Column(String)
+
+
+class Wealth(Base):
+    __tablename__ = "wealth"
+
+    id = Column(Integer, primary_key=True, index=True)
+    month = Column(Date)
+    account = Column(String)
+    type = Column(String)
+    balance = Column(Float)
+    volatility = Column(String)
+    user = Column(String)
+
+class Cashflow(Base):
+    __tablename__ = "cashflow"
+
+    id = Column(Integer, primary_key=True, index=True)
+    month = Column(Date)
+    type1 = Column(String)
+    type = Column(String)
+    amount = Column(Float)
+    flag = Column(String)
+    user = Column(String)

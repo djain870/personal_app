@@ -5,11 +5,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
-from models import Expense, Document, Chat, User, Investment
+from models import Expense, Document, Chat, User, Wealth, Cashflow
 from database import engine, Base
 from collections import defaultdict
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+from finance_routes import router as finance_router
+
 load_dotenv()
 
 from agents import expense_agent, rag_agent, router
@@ -21,6 +23,7 @@ import os
 
 # Initialize FastAPI app and database
 app = FastAPI()
+app.include_router(finance_router)
 templates = Jinja2Templates(directory="templates")
 Base.metadata.create_all(bind=engine)
 
@@ -63,40 +66,6 @@ def home(request: Request):
 
     return templates.TemplateResponse("index.html", {"request": request})
 
-
-from sqlalchemy import extract
-
-#finance management routes
-@app.get("/finances")
-def finance(request: Request, month: str = None):
-    db = SessionLocal()
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if month:
-        try:
-            year, month_num = map(int, month.split("-"))
-        except:
-            return RedirectResponse("/finances")
-
-        expenses = db.query(Expense).filter(
-            extract("year", Expense.date) == year,
-            extract("month", Expense.date) == month_num,
-            Expense.user == user
-        ).all()
-    else:
-        expenses = db.query(Expense).filter(Expense.user == user).all()
-    total = sum(e.amount for e in expenses)
-    category_totals = defaultdict(float)
-    for e in expenses:
-        category_totals[e.category] += e.amount  
-    db.close()
-    return templates.TemplateResponse(
-        "finances.html",
-        {"request": request, "expenses": expenses, "total": total, "category_totals": dict(category_totals)}
-    )
-
-  
 
 @app.post("/finances/add")
 def add_expense(
@@ -256,51 +225,6 @@ def delete_document(request: Request,id: int):
     db.close()
 
     return RedirectResponse(url="/documents", status_code=303)
-
-
-@app.get("/investments")
-def investments_dashboard(request: Request):
-    db = SessionLocal()
-    user = get_current_user(request)
-
-    if not user:
-        return RedirectResponse("/login")
-
-    investments = db.query(Investment).filter(Investment.user == user).all()
-
-    from collections import defaultdict
-
-    # Net worth trend
-    monthly_networth = defaultdict(float)
-    for i in investments:
-        key = i.month.strftime("%Y-%m")
-        monthly_networth[key] += i.balance
-
-    # Type distribution
-    type_totals = defaultdict(float)
-    for i in investments:
-        type_totals[i.type] += i.balance
-
-    # Volatility split
-    volatility_totals = defaultdict(float)
-    for i in investments:
-        volatility_totals[i.volatility] += i.balance
-
-    # Top accounts
-    top_accounts = sorted(investments, key=lambda x: x.balance, reverse=True)[:5]
-
-    db.close()
-
-    return templates.TemplateResponse(
-        "investments.html",
-        {
-            "request": request,
-            "monthly_networth": dict(monthly_networth),
-            "type_totals": dict(type_totals),
-            "volatility_totals": dict(volatility_totals),
-            "top_accounts": top_accounts
-        }
-    )
 
 
 # news routes

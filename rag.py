@@ -6,7 +6,15 @@ import os
 
 
 # embedding model
-embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+embedding = None
+
+def get_embedding():
+    global embedding
+    if embedding is None:
+        embedding = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+    return embedding
 
 # persistent vector DB
 DB_DIR = "vector_db"
@@ -14,6 +22,7 @@ DB_DIR = "vector_db"
 def process_document(file_path):
     loader = PyPDFLoader(file_path)
     docs = loader.load()
+    embedding = get_embedding()
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -31,6 +40,7 @@ def process_document(file_path):
 
 
 def query_rag(question):
+    embedding = get_embedding()
     vectordb = Chroma(
         persist_directory=DB_DIR,
         embedding_function=embedding

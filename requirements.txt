@@ -7,3 +7,11 @@ python-dotenv
 openai
 huggingface-hub
 python-multipart
+sentence-transformers
+langchain_community
+langchain_huggingface
+langchain_chroma
+langchain_text_splitters
+openpyxl
+pandas
+chromadb

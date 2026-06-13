@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 finance.db
 master_finance.xlsx
+.venv/
+.DS_Store
+vector_db/
+*.db
