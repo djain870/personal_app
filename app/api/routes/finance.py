@@ -1,20 +1,16 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-from database import SessionLocal
-from models import Expense, Wealth, Cashflow
+from datetime import datetime
 from collections import defaultdict
+
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy import extract
 
-templates = Jinja2Templates(directory="templates")
+from app.core.templates import templates
+from app.db.session import SessionLocal
+from app.models import Cashflow, Expense, Wealth
+from app.utils.auth import get_current_user
 
 router = APIRouter()
-
-def get_current_user(request: Request):
-    user = request.cookies.get("user")
-    if not user or user == "None":
-        return None
-    return user
 
 
 #finance management routes
@@ -254,4 +250,93 @@ def finance(request: Request, month: str = None, view: str = "table"):
 
   
 
+@router.post("/finances/add")
+def add_expense(
+    request: Request,
+    amount: float = Form(...),
+    category: str = Form(...),
+    note: str = Form(""),
+    date: str = Form(...)
+):
+    db = SessionLocal()
+    user = get_current_user(request)
 
+    parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    expense = Expense(
+        amount=amount,
+        category=category,
+        note=note,
+        date=parsed_date,
+        user=user
+    )
+
+    db.add(expense)
+    db.commit()
+    db.close()
+
+    return RedirectResponse(url="/finances", status_code=303)
+
+
+@router.get("/finances/delete/{id}")
+def delete_expense(request: Request, id: int):
+    db = SessionLocal()
+    user = get_current_user(request)
+    expense = db.query(Expense).filter(
+        Expense.id == id,
+        Expense.user == user
+    ).first()
+
+    if not expense:
+        db.close()
+        return RedirectResponse("/finances")
+
+    db.delete(expense)
+    db.commit()
+    db.close()
+
+    return RedirectResponse(url="/finances/", status_code=303)
+
+
+@router.get("/finances/edit/{id}")
+def edit_page(request: Request, id: int):
+    db = SessionLocal()
+    user = get_current_user(request)
+    expense = db.query(Expense).filter(
+        Expense.id == id,
+        Expense.user == user
+    ).first()
+    db.close()
+
+    return templates.TemplateResponse(
+        "finances_edit.html",
+        {"request": request, "expense": expense}
+    )
+
+
+@router.post("/finances/update/{id}")
+def update_expense(
+    request: Request,
+    id: int,
+    amount: float = Form(...),
+    category: str = Form(...),
+    note: str = Form(""),
+    date: str = Form(...)
+):
+    db = SessionLocal()
+    user = get_current_user(request)
+    expense = db.query(Expense).filter(
+        Expense.id == id,
+        Expense.user == user
+    ).first()
+
+    expense.amount = amount
+    expense.category = category
+    expense.note = note
+    parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+    expense.date = parsed_date
+
+    db.commit()
+    db.close()
+
+    return RedirectResponse(url="/finances", status_code=303)

@@ -1,0 +1,103 @@
+nav {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+    text-align: initial;
+}
+
+h1 {
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+}
+
+.upload-section {
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 40px;
+    transition: 0.3s;
+}
+
+.upload-section:hover {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+input[type="file"] {
+    margin-bottom: 20px;
+    color: #ddd;
+}
+
+button[type="submit"] {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button[type="submit"]:hover {
+    background: #4f46e5;
+    transform: scale(1.05);
+}
+
+.table-container {
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    text-align: left;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.95rem;
+}
+
+.file-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.action-link {
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-right: 15px;
+    transition: 0.3s;
+}
+
+.view-link {
+    color: #60a5fa;
+}
+
+.delete-link {
+    color: var(--danger);
+}

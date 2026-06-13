@@ -1,11 +1,10 @@
 import pandas as pd
 import re
 
-from database import SessionLocal
-from models import Wealth, Cashflow
+from app.db.session import SessionLocal
 
-from database import engine
-from models import Base
+from app.db.session import engine
+from app.models import Base, Cashflow, Wealth
 
 Base.metadata.create_all(bind=engine)
 

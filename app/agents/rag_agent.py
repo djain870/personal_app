@@ -1,4 +1,4 @@
-from rag import query_rag
+from app.services.rag import query_rag
 
 def run(message):
     context = query_rag(message)

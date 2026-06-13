@@ -1,5 +1,5 @@
-from database import SessionLocal
-from models import Expense
+from app.db.session import SessionLocal
+from app.models import Expense
 
 def run(user, message):
     db = SessionLocal()

@@ -1,0 +1,14 @@
+<nav>
+    <div>
+        <a href="/" class="nav-link" style="font-weight:600;">Personal.ai</a>
+    </div>
+    <div class="nav-links">
+        <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Home</a>
+        <a href="/finances" class="nav-link {% if request.url.path.startswith('/finances') %}active{% endif %}">Finances</a>
+        <a href="/documents" class="nav-link {% if request.url.path.startswith('/documents') %}active{% endif %}">Documents</a>
+        <a href="/news" class="nav-link {% if request.url.path.startswith('/news') %}active{% endif %}">News</a>
+        <a href="/chat" class="nav-link {% if request.url.path.startswith('/chat') %}active{% endif %}">Assistant</a>
+        <span style="font-size:0.9rem;">👤 {{ request.cookies.get('user') }}</span>
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+</nav>

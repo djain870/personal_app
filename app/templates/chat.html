@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant - Personal App{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/chat.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="chat-window">
+    <div class="messages" id="chatBox"></div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" class="chat-input" placeholder="Ask me anything...">
+        <button onclick="sendMessage()" class="send-btn">Send</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/chat.js') }}"></script>
+{% endblock %}

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, String, Date
-from database import Base
+from app.db.session import Base
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -40,8 +40,6 @@ class Chat(Base):
     user_message = Column(String)
     bot_reply = Column(String)
     user = Column(String)
-
-from sqlalchemy import Column, Integer, String
 
 class User(Base):
     __tablename__ = "users"
