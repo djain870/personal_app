@@ -7,7 +7,7 @@ def route(message: str) -> str:
 You are a classifier that routes user queries.
 
 Classify the query into ONE of the following categories:
-- expense (questions about spending, money, totals, categories, transactions)
+- expense (questions about finances, expenses, spending, money, totals, categories, transactions, income, savings, cashflow, wealth, net worth, assets)
 - document (questions about uploaded files, PDFs, reports, summaries)
 - general (everything else)
 

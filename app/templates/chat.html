@@ -7,12 +7,27 @@
 {% endblock %}
 
 {% block content %}
-<div class="chat-window">
-    <div class="messages" id="chatBox"></div>
+<div class="chat-shell">
+    <aside class="conversation-panel">
+        <div class="conversation-header">
+            <h2>Saved chats</h2>
+            <button type="button" id="newChatBtn" class="icon-btn" title="New conversation">+</button>
+        </div>
+        <div class="conversation-list" id="conversationList"></div>
+    </aside>
 
-    <div class="input-area">
-        <input type="text" id="userInput" class="chat-input" placeholder="Ask me anything...">
-        <button onclick="sendMessage()" class="send-btn">Send</button>
+    <div class="chat-window">
+        <div class="chat-topbar">
+            <h1 id="activeConversationTitle">New conversation</h1>
+            <button type="button" onclick="clearChat()" class="clear-btn">Clear</button>
+        </div>
+
+        <div class="messages" id="chatBox"></div>
+
+        <div class="input-area">
+            <input type="text" id="userInput" class="chat-input" placeholder="Ask me anything...">
+            <button onclick="sendMessage()" class="send-btn">Send</button>
+        </div>
     </div>
 </div>
 {% endblock %}

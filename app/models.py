@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, Float, String, Date
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, Float, String, Date, DateTime, ForeignKey
 from app.db.session import Base
 
 class Expense(Base):
@@ -37,9 +39,18 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
     user_message = Column(String)
     bot_reply = Column(String)
     user = Column(String)
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    user = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class User(Base):
     __tablename__ = "users"

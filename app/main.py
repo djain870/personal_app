@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect, text
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.chat import router as chat_router
@@ -23,6 +24,18 @@ app.include_router(finance_router)
 app.include_router(home_router)
 app.include_router(news_router)
 Base.metadata.create_all(bind=engine)
+
+
+def ensure_chat_schema():
+    inspector = inspect(engine)
+    chat_columns = [column["name"] for column in inspector.get_columns("chats")]
+
+    if "conversation_id" not in chat_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE chats ADD COLUMN conversation_id INTEGER"))
+
+
+ensure_chat_schema()
 
 app.mount("/data", StaticFiles(directory="data"), name="data")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
